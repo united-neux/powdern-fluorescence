@@ -19,3 +19,4 @@ The general flow should be:
 
 - Scattering processes should be created as a static list (this will allow for GPU-mode), with a fixed set of outcomes.
 - Each process will then have an enabled flag that determines if it is possible to reach it or no.
+- We can start from the notion of the Powder_process.comp of McXtrace 3.0 union developed for HALO

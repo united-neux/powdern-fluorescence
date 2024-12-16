@@ -55,7 +55,7 @@ struct fluo_line_info_struct {
   double Dd;
   double DWfactor;
   double V_0;
-  double rho;
+  double pow_density;//TODO this is likely not necessary - so check this
   double at_weight;
   double at_nb;
   double sigma_a;

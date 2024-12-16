@@ -142,7 +142,7 @@ SETTING PARAMETERS(
   target_x = 0, target_y = 0, target_z = 0, focus_r = 0,
   focus_xw=0, focus_yh=0, focus_aw=0, focus_ah=0, int target_index=0,
   int flag_compton=1, int flag_rayleigh=1, int flag_powder=1, int flag_lorentzian=1, int order=1,
-  string reflections="NULL", Vc=0)
+  string reflections="NULL", Vc=0, delta_d_d=0, DW=0, int nb_atoms=1)
 OUTPUT PARAMETERS ()
 /* X-ray parameters: (x,y,z,kx,ky,kz,phi,t,Ex,Ey,Ez,p) */
 DEPENDENCY " @XRLFLAGS@ -DUSE_OFF "
@@ -205,7 +205,7 @@ DECLARE %{
   DArray1d reuse_cum_xs_Powder;
   char *filename;
 
-  struct fluo_line_info_struct *line_info;
+  struct fluo_line_info_struct line_info;
 
 %}
 
@@ -340,11 +340,45 @@ INITIALIZE %{
   p_fluo = p_Compton = p_Rayleigh = p_Powder = 0;
   
   /*if given read a powder line reflection file*/
-  if ( reflections!=NULL && strcmp(reflections,"NULL")!=0 ){
+  if ( flag_powder && reflections!=NULL && strcmp(reflections,"NULL")!=0 ){
+    line_info.Dd       = delta_d_d;
+    line_info.DWfactor = DW;
+    line_info.V_0      = Vc;
+    line_info.pow_density      = density;
+    line_info.at_weight= weight;
+    line_info.at_nb    = nb_atoms;
+    line_info.flag_barns = 1; //always assume barns
+    line_info.flag_warning = 0;
+    line_info.radius_i =line_info.xwidth_i=line_info.yheight_i=line_info.zdepth_i=0;
+    line_info.k  = 0;
+    line_info.Nq = 0;
+    line_info.k_min = FLT_MAX; line_info.k_max = 0;
+    line_info.photon_passed=0;
+    line_info.nb_reuses = line_info.nb_refl = line_info.nb_refl_count = 0;
+    line_info.xs_compute= line_info.xs_reuse= line_info.xs_calls =0;
+    i = fluo_read_line_data(reflections, &line_info);
+    if (i == 0) {
+      exit(fprintf(stderr,"FluoPowder %s: reflection file %s is not valid.\n"
+            "ERROR    Please check file format.\n", NAME_CURRENT_COMP, reflections));
+    }
+    if (line_info.V_0 > 0 && i) {
+      struct fluo_line_data *L = line_info.list;
 
+      line_info.q = malloc(line_info.count*sizeof(double));
+      line_info.w = malloc(line_info.count*sizeof(double));
+      line_info.my_s_k2 = malloc(line_info.count*sizeof(double));
+      if (!line_info.q || !line_info.w || !line_info.my_s_k2)
+        exit(fprintf(stderr,"PowderN: %s: ERROR allocating memory (init)\n", NAME_CURRENT_COMP));
+      for(i=0; i<line_info.count; i++)
+      {
+        line_info.my_s_k2[i] = 4*PI*PI*PI*packing_factor*(L[i].DWfactor ? L[i].DWfactor : 1)
+          /(line_info.V_0*line_info.V_0)
+          *(L[i].j * L[i].F2 / L[i].q)*line_info.XsectionFactor;
+        line_info.q[i] = L[i].q;
+        line_info.w[i] = L[i].w;
+      }
+    }
   }
-
-
 
   // cached variables set to 0 (for SPLIT)
   reuse_nb=0;
@@ -672,7 +706,7 @@ do { /* while (intersect) Loop over multiple scattering events */
       // In the plane spanned by incoming and u find vector kfp which closes the scattering triangle.
       // rotate kfp around ki to form kf
       double q;
-      int qi = XRMC_SelectPowderLineQ(line_info, Ei, &q);
+      int qi = XRMC_SelectPowderLineQ(&line_info, Ei, &q);
       double theta = q/(2.0*ki);
       double alpha0;
 
@@ -686,7 +720,7 @@ do { /* while (intersect) Loop over multiple scattering events */
         nx = 0; ny = 0; nz = 1;
       }
       vec_prod(tmp_kx,tmp_ky,tmp_kz, kx/ki,ky/ki,kz/ki, nx,ny,nz);
-      
+
       alpha0 = M_PI*randpm1();
 
       /* k_out = rotate 'k' by 2*theta around tmp_k: bragg angle */

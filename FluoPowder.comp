@@ -131,7 +131,7 @@
 * %E
 ***********************************************************/
 
-DEFINE COMPONENT Fluorescence
+DEFINE COMPONENT FluoPowder
 SETTING PARAMETERS(
   string geometry=0,
   radius=0, thickness=0,
@@ -141,8 +141,8 @@ SETTING PARAMETERS(
   p_interact=0, 
   target_x = 0, target_y = 0, target_z = 0, focus_r = 0,
   focus_xw=0, focus_yh=0, focus_aw=0, focus_ah=0, int target_index=0,
-  int flag_compton=1, int flag_rayleigh=1, int flag_lorentzian=1, int order=1,
-  string reflections="NULL", Vc=0, )
+  int flag_compton=1, int flag_rayleigh=1, int flag_powder=1, int flag_lorentzian=1, int order=1,
+  string reflections="NULL", Vc=0)
 OUTPUT PARAMETERS ()
 /* X-ray parameters: (x,y,z,kx,ky,kz,phi,t,Ex,Ey,Ez,p) */
 DEPENDENCY " @XRLFLAGS@ -DUSE_OFF "
@@ -162,86 +162,11 @@ SHARE %{
   #endif
   %include "read_table-lib"
   %include "interoff-lib" // for OFF/PLY geometry
-  
-/* See XrayLib code (c) T. Schoonjans
- * /usr/include/xraylib/xraylib-parser.h      for compoundData
- * /usr/include/xraylib/xraylib.h             for XS
- */
 
-/* inspired from:
- * https://github.com/golosio/xrmc src/photon/photon.cpp (c) Bruno Golosio    
- */
+  %include "fluorescence"
   
-/* XRMC_CrossSections: Compute interaction cross sections in [barn/atom]
- * Return total cross section, given Z and E0:
- *   total_xs = XRMC_CrossSections(Z, E0, xs[3]);
- */
-double XRMC_CrossSections_powder(const char *formula, double E0, double *xs) {
-  int    i_line;
-  
-  if (xs == NULL) return 0;
-  
-  // loop on possible fluorescence lines
-  for (i_line=0; i_line<XRAYLIB_LINES_MAX; i_line++) { 
-    // cumulative sum of the line cross sections
-    //TODO Here the call to xraylib to get the total cross section for powder scattering
-    xs[POWDER] += CSb_thompson(Z, -i_line, E0, NULL); /* XRayLib */
-  }
-} // XRMC_CrossSections
 
-/* XRMC_SelectFromDistribution: select a random element from a distribution
- *   index = XRMC_SelectFromDistribution(cum_sum[N], N);
- * index is returned within 0 and N-1
- * The x_arr must be a continuously increasing cumulated sum, which last element is the max
- */
-int XRMC_SelectFromDistribution(double x_arr[], int N)
-{
-  double x=rand01()*x_arr[N-1];
-  if (x<x_arr[0]) {    // x is smaller than lower limit
-    return 0;
-  }
-  if (x>=x_arr[N-1]) { // x is greater or equal to upper limit
-    return N-1;
-  }
-  int id=0, iu=N-1; // lower and upper index of the subarray to search
-  while (iu-id>1) { // search until the size of the subarray to search is >1
-    int im = (id + iu)/2; // use the midpoint for equal partition
-    // decide which subarray to search
-    if (x>=x_arr[im]) id=im; // change min index to search upper subarray
-    else iu=im; // change max index to search lower subarray
-  }
 
-  return id;
-} // XRMC_SelectFromDistribution
-
-/* XRMC_SelectInteraction: select interaction type Fluo/Compton/Rayleigh
- * Return the interaction type from a random choice within cross sections 'xs'
- *   type = XRMC_SelectInteraction(xs[3]);
- * 'xs' is computed with XRMC_CrossSections.
- * type is one of FLUORESCENCE | RAYLEIGH | COMPTON
- */
-int XRMC_SelectInteraction(double *xs)
-{
-  double sum_xs, cum_xs[4];
-  int    i;
-  
-  cum_xs[0]=sum_xs=0;
-  for (i=0; i< 3; i++) {
-    sum_xs += xs[i];
-    cum_xs[i+1]= sum_xs;
-  }
-  return XRMC_SelectFromDistribution(cum_xs, 4);
-} // XRMC_SelectInteraction
-
-/* XRMC_SelectPowderRing: select outgoing poder scattering ring, when incoming with 'E0'
- *   Ef = XRMC_SelectPowderRing(Z, E0, &dE);
- */
-double XRMC_SelectPowderRingQ(const char *compound, double *dQ)
-{
-  //TODO This function should return a q from the possible scattering lines. 
-  int i_line;
-  double sum_xs, cum_xs_lines[XRAYLIB_LINES_MAX+1];
-}
 %}
 
 
@@ -251,13 +176,16 @@ double XRMC_SelectPowderRingQ(const char *compound, double *dQ)
 DECLARE %{
   struct   compoundData *compound;
   DArray1d cum_massFractions;
-  DArray1d cum_xs_powder;
+  DArray1d cum_xs_fluo;
+  DArray1d cum_xs_Compton;
+  DArray1d cum_xs_Rayleigh;
+  DArray1d cum_xs_Powder;
   int  shape;
   off_struct offdata;
   int  n_fluo;
   int  n_Compton;
   int  n_Rayleigh;
-  int  nPowder;
+  int  n_Powder;
   double p_fluo;
   double p_Compton;
   double p_Rayleigh;
@@ -276,6 +204,9 @@ DECLARE %{
   DArray1d reuse_cum_xs_Rayleigh;
   DArray1d reuse_cum_xs_Powder;
   char *filename;
+
+  struct fluo_line_info_struct *line_info;
+
 %}
 
 INITIALIZE %{
@@ -408,6 +339,13 @@ INITIALIZE %{
   n_fluo = n_Compton = n_Rayleigh = n_Powder = 0;
   p_fluo = p_Compton = p_Rayleigh = p_Powder = 0;
   
+  /*if given read a powder line reflection file*/
+  if ( reflections!=NULL && strcmp(reflections,"NULL")!=0 ){
+
+  }
+
+
+
   // cached variables set to 0 (for SPLIT)
   reuse_nb=0;
   reuse_ki=reuse_l0=reuse_l3=0;
@@ -416,6 +354,7 @@ INITIALIZE %{
   reuse_cum_xs_Rayleigh          = create_darr1d(compound->nElements+1);
   //no need for array here
   reuse_cum_xs_Powder            = create_darr1d(compound->nElements+1);
+%}
 
 TRACE %{
 
@@ -699,7 +638,7 @@ do { /* while (intersect) Loop over multiple scattering events */
         break;
       case POWDER:
         if(!flag_powder) ABSORB;
-        iZ=0;
+        i_Z=0;
         break;
       default:
         printf("%s: WARNING: process %i unknown. Absorb.\n", NAME_CURRENT_COMP, type);
@@ -707,7 +646,8 @@ do { /* while (intersect) Loop over multiple scattering events */
     }
     Z   = compound->Elements[i_Z];
     
-    if (type!=POWDER){
+    if ( type != POWDER ){
+      /* 4PI scattering branch */ 
       /* select outgoing vector */
       if ((target_x || target_y || target_z)) {
         aim_x = target_x-x;       /* Vector pointing at target (anal./det.) */
@@ -726,49 +666,51 @@ do { /* while (intersect) Loop over multiple scattering events */
       p *= solid_angle/(4*PI); // correct for selected solid-angle
       NORM(kf_x, kf_y, kf_z);  // normalize the outout direction |kf|=1
     } else {
+      /* Powder scattering branch */
       //TODO We are dealing with powder scattering  pick a direction on one of the D.S.-cones
       // pick direction u perpendicular to incoming
       // In the plane spanned by incoming and u find vector kfp which closes the scattering triangle.
       // rotate kfp around ki to form kf
-      double q = XRMC_SelectPowderLineQ(const char *compund, Ei);
-      double theta = q/(2.0*k);
+      double q;
+      int qi = XRMC_SelectPowderLineQ(line_info, Ei, &q);
+      double theta = q/(2.0*ki);
+      double alpha0;
 
-      double nx,ny,nz;
+      double nx,ny,nz, tmp_kx,tmp_ky,tmp_kz, kout_x, kout_y, kout_z;
+
       if (fabs(scalar_prod(1,0,0,kx,ky,z)) < fabs(scalar_prod(0,0,1,kx,ky,kz)) ) {
         // k mostly along z - find rotation axis by cross product with x
         nx = 1; ny = 0; nz = 0;
       } else {
+        // k mostly along x - find rotation axis by cross product with z
         nx = 0; ny = 0; nz = 1;
       }
-      vec_prod(tmp_kx,tmp_ky,tmp_kz, kx/k,ky/k,kz/k, nx,ny,nz);
+      vec_prod(tmp_kx,tmp_ky,tmp_kz, kx/ki,ky/ki,kz/ki, nx,ny,nz);
       
       alpha0 = M_PI*randpm1();
 
       /* k_out = rotate 'k' by 2*theta around tmp_k: bragg angle */
-      rotate(kout_x,kout_y,kout_z, kx/k,ky/k,kz/k, 2*theta, tmp_kx,tmp_ky,tmp_kz);
+      rotate(kout_x,kout_y,kout_z, kx/ki,ky/ki,kz/ki, 2*theta, tmp_kx,tmp_ky,tmp_kz);
 
       /* tmp_k = rotate k_out by alpha0 around 'k' (debye-scherrer cone) */
-      rotate(tmp_kx,tmp_ky,tmp_kz, kout_x,kout_y,kout_z, alpha0, kx, ky, kz);
-      kx = tmp_kx*k;
-      ky = tmp_ky*k;
-      kz = tmp_kz*k;
+      rotate(tmp_kx,tmp_ky,tmp_kz, kout_x, kout_y,kout_z, alpha0, kx, ky, kz);
+      kf_x = tmp_kx;
+      kf_y = tmp_ky;
+      kf_z = tmp_kz;
 
       /*weight the outgoing signal according to polarization*/
-      if (_particle->Ex!=0 || _particle->Ey!=0 || _particle->Ez!=0){
-        double EE=sqrt(_particle->Ex*_particle->Ex + _particle->Ey*_particle->Ey + _particle->Ez*_particle->Ez);
-        double s=scalar_prod(kx,ky,kz,_particle->Ex,_particle->Ey,_particle->Ez)/k/EE;
-        pmul *=(1-s)*(1-s);
+      if (Ex!=0 || Ey!=0 || Ez!=0){
+        double EE=sqrt(Ex*Ex + Ey*Ey + Ez*Ez);
+        double s=scalar_prod(kf_x,kf_y,kf_z,Ex,Ey,Ez)/EE;
+        p *=(1-s)*(1-s);
       }else{
         /*unpolarized light in - means an effective reduction according to only theta*/
-        pmul *=(1+cos(theta)*cos(theta))*0.5;
+        p *=(1+cos(theta)*cos(theta))*0.5;
       }
 
-
-
-      }
     }
 
-    // determine final energy
+    // determine final energy, apply ennergy transfer to kf
     switch (type) {
       case FLUORESCENCE: /* 0 Fluo: choose line */
         n_fluo++;

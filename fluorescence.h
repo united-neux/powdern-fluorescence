@@ -36,8 +36,50 @@ double XRMC_SelectFluorescenceEnergy(int Z, double E0, double *dE);
 /* Function removing spaces from string */
 char * removeSpacesFromStr(char *string);
 
+struct fluo_line_info_struct {
+  struct line_data_union *list;     /* Reflection array */
+  int  count;                  /* Number of reflections */
+  double Dd;
+  double DWfactor;
+  double V_0;
+  double rho;
+  double at_weight;
+  double at_nb;
+  double sigma_a;
+  double sigma_i;
+  char   compname[256];
+  double flag_barns;
+  int    shape; /* 0 cylinder, 1 box, 2 sphere, 3 OFF file */
+  int    column_order[9]; /* column signification */
+  int    flag_warning;
+  char   type;  /* interaction type of event t=Transmit, i=Incoherent, c=Coherent */
+  double dq;    /* wavevector transfer [Angs-1] */
+  double Epsilon; /* global strain in ppm */
+  double XsectionFactor;
+  double my_s_k2_sum;
+  double my_a;
+  double my_inc;
+  double lfree; // store mean free path for the last event;
+  double *w,*q, *my_s_k2;
+  double radius_i,xwidth_i,yheight_i,zdepth_i;
+  double k; /* last wavenumber (cached) */
+  double Nq;
+  int    nb_reuses, nb_refl, nb_refl_count;
+  double k_min, k_max;
+  unsigned int photon_passed;
+  long   xs_compute, xs_reuse, xs_calls;
+  t_Table mat_table;
+  int mat_column_order[5]; /*column signification for the coeff. in material data file*/
+};
+
 /* ok = fluo_get_material(material, formula)
  * extracts material atoms from file header
  * the result is concatenated into 'formula'
  */
 int fluo_get_material(char *filename, char *formula);
+
+int fluo_calc_xsect(double k, double *q, double *my_s_k2, int count, double *sum,
+          struct line_info_struct_union *line_info);
+
+int fluo_read_line_data(char *reflections, struct fluo_line_info_struct *info);
+

@@ -1,7 +1,7 @@
 # powdern-flourescence
 The objectives of this project are:
 
-1. [ ] add a powder-scattering option to the flourescence-sample component based on xraylib
+1. [x] add a powder-scattering option to the flourescence-sample component based on xraylib
 2. [ ] clean up code - with the aim of creating a generalized library that can be called for the sample model.
   This should be based on xraylib as well
   1. [ ] identify compounds (or just define a flag for that)
@@ -19,4 +19,4 @@ The general flow should be:
 
 - Scattering processes should be created as a static list (this will allow for GPU-mode), with a fixed set of outcomes.
 - Each process will then have an enabled flag that determines if it is possible to reach it or no.
-- We can start from the notion of the Powder_process.comp of McXtrace 3.0 union developed for HALO
+done - We can start from the notion of the Powder_process.comp of McXtrace 3.0 union developed for HALO

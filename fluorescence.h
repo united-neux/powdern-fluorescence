@@ -36,8 +36,21 @@ double XRMC_SelectFluorescenceEnergy(int Z, double E0, double *dE);
 /* Function removing spaces from string */
 char * removeSpacesFromStr(char *string);
 
+int fluo_PN_list_compare (void const *a, void const *b);
+
+struct fluo_line_data
+    {
+      double F2;                  /* Value of structure factor */
+      double q;                   /* Qvector */
+      int j;                      /* Multiplicity */
+      double DWfactor;            /* Debye-Waller factor */
+      double w;                   /* Intrinsic line width */
+      double Epsilon;             /* Strain=delta_d_d/d shift in ppm */
+    };
+
+
 struct fluo_line_info_struct {
-  struct line_data_union *list;     /* Reflection array */
+  struct fluo_line_data *list;     /* Reflection array */
   int  count;                  /* Number of reflections */
   double Dd;
   double DWfactor;
@@ -64,6 +77,8 @@ struct fluo_line_info_struct {
   double radius_i,xwidth_i,yheight_i,zdepth_i;
   double k; /* last wavenumber (cached) */
   double Nq;
+  double xs_Nq[CHAR_BUF_LENGTH];
+  double xs_sum[CHAR_BUF_LENGTH];
   int    nb_reuses, nb_refl, nb_refl_count;
   double k_min, k_max;
   unsigned int photon_passed;
@@ -79,7 +94,9 @@ struct fluo_line_info_struct {
 int fluo_get_material(char *filename, char *formula);
 
 int fluo_calc_xsect(double k, double *q, double *my_s_k2, int count, double *sum,
-          struct line_info_struct_union *line_info);
+          struct fluo_line_info_struct *line_info);
 
 int fluo_read_line_data(char *reflections, struct fluo_line_info_struct *info);
 
+
+int XRMC_SelectPowderLineQ(struct fluo_line_info_struct *line_info, double Ei, double *Q);

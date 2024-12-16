@@ -119,6 +119,16 @@ char * removeSpacesFromStr(char *string)
   return string;
 }
 
+int fluo_PN_list_compare (void const *a, void const *b)
+  {
+    struct fluo_line_data const *pa = a;
+    struct fluo_line_data const *pb = b;
+     double s = pa->q - pb->q;
+
+     if (!s) return 0;
+     else    return (s < 0 ? -1 : 1);
+  } /* fluo_PN_list_compare */
+
 // ok = fluo_get_material(material, formula)
 // extracts material atoms from file header
 // the result is concatenated into 'formula'
@@ -200,8 +210,8 @@ int fluo_get_material(char *filename, char *formula) {
   return(ret);
 } // fluo_get_material
 
-int fluo_read_line_data(char *SC_file, struct line_info_struct_union *info) {
-  struct line_data_union *list = NULL;
+int fluo_read_line_data(char *SC_file, struct fluo_line_info_struct *info) {
+  struct fluo_line_data *list = NULL;
   int    size = 0;
   t_Table sTable; /* sample data table structure from SC_file */
   int    i=0;
@@ -289,7 +299,7 @@ int fluo_read_line_data(char *SC_file, struct line_info_struct_union *info) {
         "WARNING: but F2 unit is set to barns=0 (fm^2). Intensity might be 100 times too low.\n",
         info->compname);
   /* allocate line_data array */
-  list = (struct line_data_union*) calloc(size, sizeof(struct line_data_union));
+  list = (struct fluo_line_data*) calloc(size, sizeof(struct fluo_line_data));
 
   for (i=0; i<size; i++)
   {
@@ -391,7 +401,7 @@ int fluo_read_line_data(char *SC_file, struct line_info_struct_union *info) {
   }
 
   /* sort the list with increasing q */
-  qsort(list, list_count, sizeof(struct line_data_union),  PN_list_compare_union);
+  qsort(list, list_count, sizeof(struct fluo_line_data),  fluo_PN_list_compare);
 
   printf("PowderN: %s: Read %i reflections from file '%s'\n",
       info->compname, list_count, SC_file);
@@ -403,14 +413,14 @@ int fluo_read_line_data(char *SC_file, struct line_info_struct_union *info) {
   info->count = list_count;
 
   return(list_count);
-} /* read_line_data_union */
+} /* fluo_read_line_data */
 
 
 /* computes the number of possible reflections (return value), and the total xsection 'sum' */
 /* this routine looks for a pre-computed value in the Nq and sum cache tables               */
 /* when found, the earch starts from the corresponding lower element in the table           */
 int fluo_calc_xsect(double k, double *q, double *my_s_k2, int count, double *sum,
-    struct line_info_struct_union *line_info) {
+    struct fluo_line_info_struct *line_info) {
   int    Nq = 0, line=0, line0=0;
   /*sinth for tthmax=180 is 1.*/
   double sinth=1.0;//sin(DEG2RAD*tth_max*0.5);
@@ -449,3 +459,8 @@ int fluo_calc_xsect(double k, double *q, double *my_s_k2, int count, double *sum
   return(Nq);
 } /* fluo_calc_xsect */
 
+int XRMC_SelectPowderLineQ(struct fluo_line_info_struct *line_info, double Ei, double *Q){
+  // given an energy in - select a line and return its number - additionally return the q-value of that line.
+  // This basicaly amounts to a call to SelectFromDistribution
+  return Q;
+}

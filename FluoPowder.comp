@@ -179,17 +179,17 @@ DECLARE %{
   DArray1d cum_xs_fluo;
   DArray1d cum_xs_Compton;
   DArray1d cum_xs_Rayleigh;
-  DArray1d cum_xs_Powder;
+  DArray1d cum_xs_powder;
   int  shape;
   off_struct offdata;
   int  n_fluo;
   int  n_Compton;
   int  n_Rayleigh;
-  int  n_Powder;
+  int  n_powder;
   double p_fluo;
   double p_Compton;
   double p_Rayleigh;
-  double p_Powder;
+  double p_powder;
   // cached values for SPLIT
   int    reuse_nb;
   int    reuse_intersect;
@@ -202,7 +202,7 @@ DECLARE %{
   DArray1d reuse_cum_xs_fluo;
   DArray1d reuse_cum_xs_Compton;
   DArray1d reuse_cum_xs_Rayleigh;
-  DArray1d reuse_cum_xs_Powder;
+  DArray1d reuse_cum_xs_powder;
   char *filename;
 
   struct fluo_line_info_struct line_info;
@@ -285,7 +285,7 @@ INITIALIZE %{
   cum_xs_Compton           = create_darr1d(compound->nElements+1);
   cum_xs_Rayleigh          = create_darr1d(compound->nElements+1);
   // no need for array here - the separate elements are already built into the structure factors
-  cum_xs_Powder            = create_darr1d(compound->nElements+1);
+  cum_xs_powder            = create_darr1d(compound->nElements+1);
   cum_massFractions[0]     = 0;
   
   /* print material information, and check for elements */
@@ -336,8 +336,8 @@ INITIALIZE %{
     );
   }
   
-  n_fluo = n_Compton = n_Rayleigh = n_Powder = 0;
-  p_fluo = p_Compton = p_Rayleigh = p_Powder = 0;
+  n_fluo = n_Compton = n_Rayleigh = n_powder = 0;
+  p_fluo = p_Compton = p_Rayleigh = p_powder = 0;
   
   /*if given read a powder line reflection file*/
   if ( flag_powder && reflections!=NULL && strcmp(reflections,"NULL")!=0 ){
@@ -387,7 +387,7 @@ INITIALIZE %{
   reuse_cum_xs_Compton           = create_darr1d(compound->nElements+1);
   reuse_cum_xs_Rayleigh          = create_darr1d(compound->nElements+1);
   //no need for array here
-  reuse_cum_xs_Powder            = create_darr1d(compound->nElements+1);
+  reuse_cum_xs_powder            = create_darr1d(compound->nElements+1);
 %}
 
 TRACE %{
@@ -428,7 +428,7 @@ pi   = p;      // used to test for multiple fluo weighting and order cutoff
 do { /* while (intersect) Loop over multiple scattering events */
 
   // test for a SPLIT event (same particle comes in)
-  if (!event_counter && fabs(reuse_ki - ki) < 1e-15) {
+  if (0 || !event_counter && fabs(reuse_ki - ki) < 1e-15) {
     reuse     = 1;
     reuse_nb++;
     // use cached values and skip actual computation
@@ -504,7 +504,7 @@ do { /* while (intersect) Loop over multiple scattering events */
     reuse           = 0;
     reuse_intersect = intersect;
     reuse_l0        = l0;
-    reuse_l1        = l1; //TODO figure out what these mean presumable indices into something
+    reuse_l1        = l1;
     reuse_l2        = l2;
     reuse_l3        = l3;
     reuse_ki        = ki;
@@ -551,7 +551,7 @@ do { /* while (intersect) Loop over multiple scattering events */
 
   if (intersect) {
     double my_s;
-    int    i_Z,i;
+    int    i_Z,i_q,i;
     int    flag=0;
     double d_path, p_trans, p_scatt, mc_trans, mc_scatt;
     
@@ -575,13 +575,26 @@ do { /* while (intersect) Loop over multiple scattering events */
         cum_xs_Rayleigh[i_Z+1] = cum_xs_Rayleigh[i_Z]+frac*xs_Z[RAYLEIGH];
         for (i=0; i<3; i++) { xs[i] += frac*xs_Z[i]; }
       } // for Z in compound
-      
+     
       // store values into cache for SPLIT
       for (i_Z=0; i_Z< compound->nElements; i_Z++) {
         reuse_cum_xs_fluo[i_Z+1]     = cum_xs_fluo[i_Z+1];
         reuse_cum_xs_Compton[i_Z+1]  = cum_xs_Compton[i_Z+1];
         reuse_cum_xs_Rayleigh[i_Z+1] = cum_xs_Rayleigh[i_Z+1];
       }
+      
+      // for powder scattering we need to loop over lines instead of elements
+      for (i_q=0; i_q< line_info.Nq; i_q++){
+        sigma_barn              += GET_TOTAL_POWDER_XSECT(); //this is likeley already present in line_info
+        cum_xs_powder[i_q+1]      = cum_xs_powder[i_q] + GET_XSECT_IQ(); // this is likeley already present in line_info
+        xs[POWDER] = GET_TOTAL_POWDER_XSECT();
+      }
+      //now we hacwe a 5th xs-term which contains the powder scattering cross-section
+      //store also these things for reuse
+      for (i_q=0; i_q< line_info.Nq; i_q++){
+        reuse_cum_xs_powder[i_q] = cum_xs_powder[i_q];
+      }
+
       reuse_sigma_barn = sigma_barn;
     } else {
       // reuse cached values (SPLIT)
@@ -596,7 +609,7 @@ do { /* while (intersect) Loop over multiple scattering events */
       
       sigma_barn = reuse_sigma_barn;
     }
-    //TODO At this point sigma_barn contains the total cross section for all scattering processes
+    //TODO At this point sigma_barn contains the total cross section for the three scattering processes
 
     /* probability to absorb/scatter */
     my_s   = rho*100*sigma_barn; /* mu, 100: convert from barns to fm^2. my_s in [1/m] */
@@ -645,16 +658,16 @@ do { /* while (intersect) Loop over multiple scattering events */
 
   //TODO At this point we know that we scatter somehow
   if (intersect) { /* scattering event */
-    int    i_Z, Z;
+    int    i_Z, Z, i_q;
     double solid_angle;
     double theta, dsigma;
     double Ef, dE;
     
     /* correct for XS total(photo+Compton+Rayleigh) > sum(fluo+Compton+Rayleigh) */
-    dsigma = (xs[FLUORESCENCE]+xs[RAYLEIGH]+xs[COMPTON])/sigma_barn;
+    dsigma = (xs[FLUORESCENCE]+xs[RAYLEIGH]+xs[COMPTON]+xs[POWDER])/sigma_barn;
     if (dsigma < 1) p *= dsigma; // < 1
 
-    /* MC choose process from cross sections 'xs': fluo, Compton, Rayleigh */
+    /* MC choose process from cross sections 'xs': fluo, Compton, Rayleigh, powder */
     type = XRMC_SelectInteraction(xs);
     
     /* choose Z (element) on associated XS, taking into account mass-fractions */
@@ -672,14 +685,14 @@ do { /* while (intersect) Loop over multiple scattering events */
         break;
       case POWDER:
         if(!flag_powder) ABSORB;
-        i_Z=0;
+        i_q = XRMC_SelectFromDistribution(cum_xs_powder, line_info.Nq);
         break;
       default:
         printf("%s: WARNING: process %i unknown. Absorb.\n", NAME_CURRENT_COMP, type);
         ABSORB;
     }
     Z   = compound->Elements[i_Z];
-    
+ 
     if ( type != POWDER ){
       /* 4PI scattering branch */ 
       /* select outgoing vector */
@@ -705,8 +718,7 @@ do { /* while (intersect) Loop over multiple scattering events */
       // pick direction u perpendicular to incoming
       // In the plane spanned by incoming and u find vector kfp which closes the scattering triangle.
       // rotate kfp around ki to form kf
-      double q;
-      int qi = XRMC_SelectPowderLineQ(&line_info, Ei, &q);
+      double q = line_info.list[i_q].q;
       double theta = q/(2.0*ki);
       double alpha0;
 
@@ -741,7 +753,6 @@ do { /* while (intersect) Loop over multiple scattering events */
         /*unpolarized light in - means an effective reduction according to only theta*/
         p *=(1+cos(theta)*cos(theta))*0.5;
       }
-
     }
 
     // determine final energy, apply ennergy transfer to kf
@@ -775,8 +786,8 @@ do { /* while (intersect) Loop over multiple scattering events */
         p         *= 4*PI*dsigma/xs[COMPTON];
         break;
       case POWDER:      /* 4 Powder: Coherent: elastic, choose line/q */
-        n_Powder++;
-        p_Powder += p;
+        n_powder++;
+        p_powder += p;
         break;
     }
     Ef = K2E*kf;

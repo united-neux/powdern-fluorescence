@@ -41,7 +41,7 @@
 * %End
 *******************************************************************************/
 DEFINE INSTRUMENT Test_PowderN(E0=15, L1=10, int directbeam=0, string reflections="LaB6_660b_AVID2.hkl", 
-  int SPLITS=1, frac_c=0.8, frac_i=0.1, frac_t=0.1, d_phi=0, TTH=0, int index=1)
+  int SPLITS=1, frac_c=0.8, frac_i=0.1, frac_t=0.1, d_phi=0, TTH=0, int index=3)
 
 TRACE
 

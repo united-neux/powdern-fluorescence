@@ -98,5 +98,4 @@ int fluo_calc_xsect(double k, double *q, double *my_s_k2, int count, double *sum
 
 int fluo_read_line_data(char *reflections, struct fluo_line_info_struct *info);
 
-
 int XRMC_SelectPowderLineQ(struct fluo_line_info_struct *line_info, double Ei, double *Q);

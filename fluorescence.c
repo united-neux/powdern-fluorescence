@@ -55,23 +55,23 @@ int XRMC_SelectFromDistribution(double x_arr[], int N)
   return id;
 } // XRMC_SelectFromDistribution
 
-/* XRMC_SelectInteraction: select interaction type Fluo/Compton/Rayleigh
+/* XRMC_SelectInteraction: select interaction type Fluo/Compton/Rayleigh/powder
  * Return the interaction type from a random choice within cross sections 'xs'
  *   type = XRMC_SelectInteraction(xs[3]);
  * 'xs' is computed with XRMC_CrossSections.
- * type is one of FLUORESCENCE | RAYLEIGH | COMPTON
+ * type is one of FLUORESCENCE | RAYLEIGH | COMPTON | POWDER
  */
 int XRMC_SelectInteraction(double *xs)
 {
-  double sum_xs, cum_xs[4];
+  double sum_xs, cum_xs[5];
   int    i;
   
   cum_xs[0]=sum_xs=0;
-  for (i=0; i< 3; i++) {
+  for (i=0; i< 4; i++) {
     sum_xs += xs[i];
     cum_xs[i+1]= sum_xs;
   }
-  return XRMC_SelectFromDistribution(cum_xs, 4);
+  return XRMC_SelectFromDistribution(cum_xs, 5);
 } // XRMC_SelectInteraction
 
 /* XRMC_SelectFluorescenceEnergy: select outgoing fluo photon energy, when incoming with 'E0'
@@ -272,7 +272,7 @@ int fluo_read_line_data(char *SC_file, struct fluo_line_info_struct *info) {
     if (parsing[13] && info->Dd <0)          info->Dd      =atof(parsing[13]);
     if (parsing[14])                  info->column_order[7]=atoi(parsing[14]);
     if (parsing[15] && !info->V_0)    info->V_0    =1/atof(parsing[15]);
-    if (parsing[16] && !info->rho)    info->rho    =atof(parsing[16]);
+    if (parsing[16] && !info->pow_density)    info->pow_density    =atof(parsing[16]);
     if (parsing[17] && !info->at_weight)     info->at_weight    =atof(parsing[17]);
     if (parsing[18] && info->at_nb <= 1)  info->at_nb    =atof(parsing[18]);
     if (parsing[19] && info->at_nb <= 1)  info->at_nb    =atof(parsing[19]);
@@ -462,5 +462,5 @@ int fluo_calc_xsect(double k, double *q, double *my_s_k2, int count, double *sum
 int XRMC_SelectPowderLineQ(struct fluo_line_info_struct *line_info, double Ei, double *Q){
   // given an energy in - select a line and return its number - additionally return the q-value of that line.
   // This basicaly amounts to a call to SelectFromDistribution
-  return Q;
+  return 0;
 }

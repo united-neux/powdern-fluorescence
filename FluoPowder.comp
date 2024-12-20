@@ -373,7 +373,7 @@ INITIALIZE %{
       {
         line_info.my_s_k2[i] = 4*PI*PI*PI*packing_factor*(L[i].DWfactor ? L[i].DWfactor : 1)
           /(line_info.V_0*line_info.V_0)
-          *(L[i].j * L[i].F2 / L[i].q)*line_info.XsectionFactor;
+          *(L[i].j * L[i].F2 / L[i].q);
         line_info.q[i] = L[i].q;
         line_info.w[i] = L[i].w;
       }

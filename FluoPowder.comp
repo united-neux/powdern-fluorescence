@@ -26,12 +26,12 @@
 * will result on a larger number of scattered events, retaining intensity.
 *
 * The 'material' specification is given as a chemical formulae, e.g. "LaB6". It
-* may also be given as a file name (CIF/LAU/LAZ/FullProf format) in which case 
+* may also be given as a file name (CIF/LAU/LAZ/FullProf format) in which case
 * the formulae is guessed (but may be approximative).
 *
 * By setting the 'order' to 1, the absorption along the scattered path is handled.
 * A higher 'order' will handle multiple scattering events, and final absorption.
-* For instance, a value order>=2 handles e.g. fluorescence iterative cascades 
+* For instance, a value order>=2 handles e.g. fluorescence iterative cascades
 * in the material. Leaving 'order=0' handles the single scattering only.
 *
 * <b>Sample shape:</b>
@@ -137,8 +137,8 @@ SETTING PARAMETERS(
   radius=0, thickness=0,
   xwidth=0, yheight=0, zdepth=0,
   int concentric=0,
-  string material="LaB6", packing_factor=0, rho=0, density=0, weight=0, 
-  p_interact=0, 
+  string material="LaB6", packing_factor=0, rho=0, density=0, weight=0,
+  p_interact=0,
   target_x = 0, target_y = 0, target_z = 0, focus_r = 0,
   focus_xw=0, focus_yh=0, focus_aw=0, focus_ah=0, int target_index=0,
   int flag_compton=1, int flag_rayleigh=1, int flag_powder=1, int flag_lorentzian=1, int order=1,
@@ -157,14 +157,14 @@ SHARE %{
   #define RAYLEIGH     1  // Coherent
   #define COMPTON      2  // Incoherent
   #define TRANSMISSION 3
-  #define POWDER       4 // Powder scattering  
+  #define POWDER       4 // Powder scattering
   #include <xraylib/xraylib.h>
   #endif
   %include "read_table-lib"
   %include "interoff-lib" // for OFF/PLY geometry
 
   %include "fluorescence"
-  
+
 
 
 %}
@@ -215,9 +215,9 @@ INITIALIZE %{
   double     E0, dE;
   xrl_error *error = NULL;
   int        i;
-  
+
   XRayInit();
-  
+
   shape=-1; /* -1:no shape, 0:cyl, 1:box, 2:sphere, 3:any-shape  */
   if (geometry && strlen(geometry) && strcmp(geometry, "NULL") && strcmp(geometry, "0")) {
     #ifndef USE_OFF
@@ -236,10 +236,10 @@ INITIALIZE %{
   if (shape < 0)
     exit(fprintf(stderr,"Fluorescence: %s: sample has invalid dimensions.\n"
                         "ERROR       Please check parameter values (xwidth, yheight, zdepth, radius).\n", NAME_CURRENT_COMP));
-  
-  if (!material || !strlen(material) || !strcmp(material, "NULL") || !strcmp(material, "0")) 
+
+  if (!material || !strlen(material) || !strcmp(material, "NULL") || !strcmp(material, "0"))
     exit(fprintf(stderr, "Fluorescence: ERROR: %s: Null material specification\n", NAME_CURRENT_COMP));
-    
+
   // test if the material is given as a file
   char path[1024];
   char formula[65536];
@@ -251,7 +251,7 @@ INITIALIZE %{
     // search (case sensitive) along lines
     if (!fluo_get_material(material, formula))
       exit(fprintf(stderr, "ERROR: %s: file %s does not contain material formulae.\n", NAME_CURRENT_COMP, material));
-    
+
     fprintf(stderr, "Fluorescence: INFO: %s: found material %s from file %s\n", NAME_CURRENT_COMP, formula, material);
     strcpy(material, formula);
     // CIF: _chemical_formula_structural 'chemical_formulae'
@@ -261,23 +261,23 @@ INITIALIZE %{
     // LAZ/LAU: # TITLE <at> <at> ... [ trailing...]
     // CFL: Title <chemical_formulae>
     // CFL: Atom <at> <trailing>
-    
+
   } else filename = NULL;
-    
+
   compound = CompoundParser(material, &error); /* XRayLib */
   if (error != NULL) {
     exit(fprintf(stderr, "ERROR: %s: Invalid material %s: %s\n",
       NAME_CURRENT_COMP, material, error->message));
   }
   xrl_error_free(error);
-  
-  /* compute total density for raw material and display information ========= */  
+
+  /* compute total density for raw material and display information ========= */
   if (weight <= 0) weight = compound->molarMass; /* g/mol */
   MPI_MASTER(
-    printf("%s: Material %s mass fractions:\n", 
+    printf("%s: Material %s mass fractions:\n",
       NAME_CURRENT_COMP, material);
   )
-  
+
   double mat_density       = 0; /* g/cm3 */
   double sum_massFractions = 0;
   cum_massFractions        = create_darr1d(compound->nElements+1);
@@ -287,7 +287,7 @@ INITIALIZE %{
   // no need for array here - the separate elements are already built into the structure factors
   cum_xs_powder            = create_darr1d(compound->nElements+1);
   cum_massFractions[0]     = 0;
-  
+
   /* print material information, and check for elements */
   for (i=0; i< compound->nElements; i++) {
     int    Z      = compound->Elements[i];
@@ -307,7 +307,7 @@ INITIALIZE %{
   xrl_error_free(error);
   if (density <= 0)        density        = mat_density;   /* g/cm3 */
   if (packing_factor <= 0) packing_factor = density/mat_density;
-  
+
   /* molar volume [cm^3/mol] = weight [g/mol] / density [g/cm^3] */
   /* atom density per Angs^3 = [mol/cm^3] * N_Avogadro *(1e-8)^3 */
   if (!rho) rho = density/weight/1e24*NA; // atom density [at/Angs-3]
@@ -319,7 +319,7 @@ INITIALIZE %{
     printf("\n");
   )
   if (0 < packing_factor && packing_factor < 1) rho *= packing_factor;
-  
+
   /* target for scattering ================================================== */
   if (!target_index && !target_x && !target_y && !target_z) target_index=1;
   if (target_index)
@@ -335,10 +335,10 @@ INITIALIZE %{
       NAME_CURRENT_COMP);
     );
   }
-  
+
   n_fluo = n_Compton = n_Rayleigh = n_powder = 0;
   p_fluo = p_Compton = p_Rayleigh = p_powder = 0;
-  
+
   /*if given read a powder line reflection file*/
   if ( flag_powder && reflections!=NULL && strcmp(reflections,"NULL")!=0 ){
     line_info.Dd       = delta_d_d;
@@ -403,7 +403,7 @@ double sigma_barn=0, xs[4]; /* cross sections [barn/atom] fluo/Compton/Rayleigh 
 double aim_x=0, aim_y=0, aim_z=1;   /* Position of target relative to scattering point */
 int    event_counter   = 0;         /* scattering event counter (multiple fluorescence) */
 int    force_transmit  = 0;         /* Flag to handle cross-section weighting in case of finite order */
-
+int    Q;
 #ifdef OPENACC
 #ifdef USE_OFF
 off_struct thread_offdata = offdata;
@@ -439,7 +439,7 @@ do { /* while (intersect) Loop over multiple scattering events */
     l3        = reuse_l3;
   } else {
     // we have a different event: compute intersection lengths
-    
+
     /* ========================================================================== */
     /*                                   GEOMETRY                                 */
     /* ========================================================================== */
@@ -544,7 +544,7 @@ do { /* while (intersect) Loop over multiple scattering events */
       intersect = 0; /* the sample was passed entirely */
     }
   } // if intersect (geometry)
-    
+
   /* ========================================================================== */
   /*                             INTERACTION PROCESS                            */
   /* ========================================================================== */
@@ -554,9 +554,9 @@ do { /* while (intersect) Loop over multiple scattering events */
     int    i_Z,i_q,i;
     int    flag=0;
     double d_path, p_trans, p_scatt, mc_trans, mc_scatt;
-    
+
     /* actual fluorescence calculation */
-    
+
     /* compute total scattering cross section for incoming photon energy Ei */
     /* compute each contribution XS */
     xs[FLUORESCENCE]=xs[COMPTON]=xs[RAYLEIGH]=xs[TRANSMISSION]=sigma_barn=0;
@@ -575,23 +575,28 @@ do { /* while (intersect) Loop over multiple scattering events */
         cum_xs_Rayleigh[i_Z+1] = cum_xs_Rayleigh[i_Z]+frac*xs_Z[RAYLEIGH];
         for (i=0; i<3; i++) { xs[i] += frac*xs_Z[i]; }
       } // for Z in compound
-     
+
       // store values into cache for SPLIT
       for (i_Z=0; i_Z< compound->nElements; i_Z++) {
         reuse_cum_xs_fluo[i_Z+1]     = cum_xs_fluo[i_Z+1];
         reuse_cum_xs_Compton[i_Z+1]  = cum_xs_Compton[i_Z+1];
         reuse_cum_xs_Rayleigh[i_Z+1] = cum_xs_Rayleigh[i_Z+1];
       }
-      
+
       // for powder scattering we need to loop over lines instead of elements
-      for (i_q=0; i_q< line_info.Nq; i_q++){
-        sigma_barn              += GET_TOTAL_POWDER_XSECT(); //this is likeley already present in line_info
-        cum_xs_powder[i_q+1]      = cum_xs_powder[i_q] + GET_XSECT_IQ(); // this is likeley already present in line_info
-        xs[POWDER] = GET_TOTAL_POWDER_XSECT();
+      // also keep track of how many lines are reachable for this ki
+      for (i_q=0; i_q< line_info.Nq && line_info.q[i]<2*ki; i_q++){
+        //GET_TOTAL_POWDER_XSECT(); //this is likeley already present in line_info
+        cum_xs_powder[i_q+1]      = cum_xs_powder[i_q] + line_info.my_s_k2[i_q]*ki*ki;
       }
-      //now we hacwe a 5th xs-term which contains the powder scattering cross-section
-      //store also these things for reuse
-      for (i_q=0; i_q< line_info.Nq; i_q++){
+      Q=i_q;
+      //The last item now contains the total xs of all powder lines.
+      xs[POWDER]  = cum_xs_powder[i_q];
+      sigma_barn += cum_xs_powder[i_q];
+
+      //NOTE now we hacwe a 5th xs-term which contains the powder scattering cross-section
+      //store also this for reuse
+      for (i_q=0; i_q<Q; i_q++){
         reuse_cum_xs_powder[i_q] = cum_xs_powder[i_q];
       }
 
@@ -606,20 +611,25 @@ do { /* while (intersect) Loop over multiple scattering events */
         xs[COMPTON]           += reuse_cum_xs_Compton[i_Z+1];
         xs[RAYLEIGH]          += reuse_cum_xs_Rayleigh[i_Z+1];
       }
-      
+
+      for (i_q=0; i_q<Q; i_q++){
+        //TODO do check that the i_q+1 index is correct
+        cum_xs_fluo[i_q+1]     = reuse_cum_xs_powder[i_q+1];
+        xs[POWDER]            += reuse_cum_xs_powder[i_q+1];
+      }
       sigma_barn = reuse_sigma_barn;
     }
-    //TODO At this point sigma_barn contains the total cross section for the three scattering processes
+    /*NOTE At this point sigma_barn contains the total cross section for the three scattering processes */
 
     /* probability to absorb/scatter */
     my_s   = rho*100*sigma_barn; /* mu, 100: convert from barns to fm^2. my_s in [1/m] */
     d_path = ( dl0 +dl2 );  /* total path lenght in sample */
-    
-    /* Proba of transmission/interaction along length d_path */    
+
+    /* Proba of transmission/interaction along length d_path */
     p_trans = exp(-my_s*d_path); /* probability to not-interact (transmit) */
     //printf("sigma_barn=%g p_trans=%g\n", sigma_barn, p_trans);
     p_scatt = 1 - p_trans;       /* portion of beam which scatters */
-    
+
     /* force a given fraction of the beam to scatter */
     if (p_interact>0 && p_interact<=1) {
       /* we force a portion of the beam to interact */
@@ -630,10 +640,10 @@ do { /* while (intersect) Loop over multiple scattering events */
     }
     mc_scatt = 1 - mc_trans; /* portion of beam to scatter (or force to) */
     if (mc_scatt <= 0) ABSORB;
-    
-    if (!force_transmit && mc_scatt > 0 && (mc_scatt >= 1 || rand01() < mc_scatt)) { 
+
+    if (!force_transmit && mc_scatt > 0 && (mc_scatt >= 1 || rand01() < mc_scatt)) {
       /* we "scatter" with one of the interaction processes */
-        
+
       dl = -log(1 - rand0max((1 - exp(-my_s*d_path)))) / my_s; /* length */
 
       /* If t0 is in hole, propagate to next part of the hollow cylinder */
@@ -642,7 +652,7 @@ do { /* while (intersect) Loop over multiple scattering events */
       /* photon propagation to the scattering point */
       PROP_DL(dl);
       p *= fabs(p_scatt/mc_scatt); /* account for p_interact, lower than 1 */
-      
+
     } else { // force_transmit
       /* we go through the material without interaction, and exit */
       if (type <0) type = TRANSMISSION; // 3 transmission
@@ -653,7 +663,7 @@ do { /* while (intersect) Loop over multiple scattering events */
       if (p_interact>0 && p_interact<=1) p /= mc_trans;
       break; // end while (intersect)
     }
-    
+
   } /* if intersect (propagate) */
 
   //TODO At this point we know that we scatter somehow
@@ -662,14 +672,14 @@ do { /* while (intersect) Loop over multiple scattering events */
     double solid_angle;
     double theta, dsigma;
     double Ef, dE;
-    
+
     /* correct for XS total(photo+Compton+Rayleigh) > sum(fluo+Compton+Rayleigh) */
     dsigma = (xs[FLUORESCENCE]+xs[RAYLEIGH]+xs[COMPTON]+xs[POWDER])/sigma_barn;
     if (dsigma < 1) p *= dsigma; // < 1
 
     /* MC choose process from cross sections 'xs': fluo, Compton, Rayleigh, powder */
     type = XRMC_SelectInteraction(xs);
-    
+
     /* choose Z (element) on associated XS, taking into account mass-fractions */
     switch (type) {
       case FLUORESCENCE:
@@ -685,16 +695,16 @@ do { /* while (intersect) Loop over multiple scattering events */
         break;
       case POWDER:
         if(!flag_powder) ABSORB;
-        i_q = XRMC_SelectFromDistribution(cum_xs_powder, line_info.Nq);
+        i_q = XRMC_SelectFromDistribution(cum_xs_powder, Q);
         break;
       default:
         printf("%s: WARNING: process %i unknown. Absorb.\n", NAME_CURRENT_COMP, type);
         ABSORB;
     }
     Z   = compound->Elements[i_Z];
- 
+
     if ( type != POWDER ){
-      /* 4PI scattering branch */ 
+      /* 4PI scattering branch */
       /* select outgoing vector */
       if ((target_x || target_y || target_z)) {
         aim_x = target_x-x;       /* Vector pointing at target (anal./det.) */
@@ -768,7 +778,7 @@ do { /* while (intersect) Loop over multiple scattering events */
         }
         kf      = Ef*E2K;
         break;
-        
+
       case RAYLEIGH:     /* 1 Rayleigh: Coherent, elastic    */
         n_Rayleigh++;
         p_Rayleigh += p;
@@ -776,7 +786,7 @@ do { /* while (intersect) Loop over multiple scattering events */
         dsigma     = DCSb_Rayl(Z,  Ei, theta, NULL); // [barn/at/st]
         p         *= 4*PI*dsigma/xs[RAYLEIGH];
         break;
-      
+
       case COMPTON:      /* 2 Compton: Incoherent: choose final energy */
         n_Compton++;
         p_Compton += p;
@@ -791,18 +801,18 @@ do { /* while (intersect) Loop over multiple scattering events */
         break;
     }
     Ef = K2E*kf;
-    
+
     kx = kf*kf_x;
     ky = kf*kf_y;
     kz = kf*kf_z;
     SCATTER;
     event_counter++;
-    
+
     /* exit if multiple scattering order has been reached */
     if (!order) break; // skip final absorption
     // stop when order has been reached, or weighting is very low
     if (order && (event_counter >= order || p/pi < 1e-7)) { force_transmit=1; }
- 
+
   } // if intersect (scatter)
 } while(intersect); /* end do (intersect) (multiple scattering loop) */
 
@@ -812,9 +822,8 @@ FINALLY %{
   FreeCompoundData(compound);
   if (filename && filename != material)
     unlink(filename);
-  printf("%s: scattered intensity: fluo=%g Compton=%g Rayleigh=%g\n", 
+  printf("%s: scattered intensity: fluo=%g Compton=%g Rayleigh=%g\n",
     NAME_CURRENT_COMP, p_fluo, p_Compton, p_Rayleigh);
 %}
 
 END
-

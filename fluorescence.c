@@ -4,20 +4,20 @@
  */
 
 /* inspired from:
- * https://github.com/golosio/xrmc src/photon/photon.cpp (c) Bruno Golosio    
+ * https://github.com/golosio/xrmc src/photon/photon.cpp (c) Bruno Golosio
  */
-  
+
 /* XRMC_CrossSections: Compute interaction cross sections in [barn/atom]
  * Return total cross section, given Z and E0:
  *   total_xs = XRMC_CrossSections(Z, E0, xs[3]);
  */
 double XRMC_CrossSections(int Z, double E0, double *xs) {
   int    i_line;
-  
+
   if (xs == NULL) return 0;
-  
+
   // loop on possible fluorescence lines
-  for (i_line=0; i_line<XRAYLIB_LINES_MAX; i_line++) { 
+  for (i_line=0; i_line<XRAYLIB_LINES_MAX; i_line++) {
     // cumulative sum of the line cross sections
     xs[FLUORESCENCE] += CSb_FluorLine(Z, -i_line, E0, NULL); /* XRayLib */
   }
@@ -25,7 +25,7 @@ double XRMC_CrossSections(int Z, double E0, double *xs) {
   // coherent and incoherent cross sections
   xs[RAYLEIGH] = CSb_Rayl( Z, E0, NULL);
   xs[COMPTON]  = CSb_Compt(Z, E0, NULL);
-  
+
   // total interaction cross section, should converge to CSb_Total(Z, E0, NULL)
   return xs[FLUORESCENCE] + xs[RAYLEIGH] + xs[COMPTON];
 } // XRMC_CrossSections
@@ -65,7 +65,7 @@ int XRMC_SelectInteraction(double *xs)
 {
   double sum_xs, cum_xs[5];
   int    i;
-  
+
   cum_xs[0]=sum_xs=0;
   for (i=0; i< 4; i++) {
     sum_xs += xs[i];
@@ -111,13 +111,83 @@ char * removeSpacesFromStr(char *string)
     {
       string[non_space_count] = string[i];
       non_space_count++; //non_space_count incremented
-    }    
+    }
   }
 
   //Finally placing final character at the string end
   string[non_space_count] = '\0';
   return string;
 }
+
+#ifndef CIF2HKL
+#define CIF2HKL
+// hkl_filename = cif2hkl(file, options)
+//   used to convert CIF/CFL/INS file into F2(hkl)
+//   the CIF2HKL env var can point to a cif2hkl executable
+//   else the McCode binary is attempted, then the system.
+char *cif2hkl(const char *infile, const char *options) {
+  char cmd[1024];
+  int  ret = 0;
+  int  found = 0;
+  char *OUTFILE;
+
+  // get filename extension
+  const char *ext = strrchr(infile, '.');
+  if(!ext || ext == infile) return infile;
+  else ext++;
+
+  // return input when no extension or not a CIF/FullProf/ShelX file
+  if ( strcasecmp(ext, "cif")
+      && strcasecmp(ext, "pcr")
+      && strcasecmp(ext, "cfl")
+      && strcasecmp(ext, "shx")
+      && strcasecmp(ext, "ins")
+      && strcasecmp(ext, "res")) return infile;
+
+  OUTFILE = malloc(1024);
+  if (!OUTFILE) return infile;
+
+  strncpy(OUTFILE, tmpnam(NULL), 1024); // create an output temporary file name
+
+  // try in order the CIF2HKL env var, then the system cif2hkl, then the McCode one
+  if (!found && getenv("CIF2HKL")) {
+    snprintf(cmd,  1024, "%s -o %s %s %s",
+        getenv("CIF2HKL"),
+        OUTFILE, options, infile);
+    ret = system(cmd);
+    if (ret != -1 && ret != 127) found = 1;
+  }
+  if (!found) {
+    snprintf(cmd,  1024, "%s%c%s%c%s -o %s %s %s",
+        getenv(FLAVOR_UPPER) ? getenv(FLAVOR_UPPER) : MCXTRACE,
+        MC_PATHSEP_C, "bin", MC_PATHSEP_C, "cif2hkl",
+        OUTFILE, options, infile);
+    ret = system(cmd);
+    if (ret != -1 && ret != 127) found = 1;
+  }
+  // ret = -1:  child process could not be created
+  // ret = 127: shell could not be executed in the child process
+  if (!found) {
+    // try with any cif2hkl command from the system
+    snprintf(cmd,  1024, "%s -o %s %s %s",
+        "cif2hkl", OUTFILE, options, infile);
+    ret = system(cmd);
+  }
+
+  if (ret == -1 || ret == 127) return(NULL);
+
+  // test if the result file has been created
+  FILE *file = fopen(OUTFILE,"r");
+  if (!file) return(NULL);
+  MPI_MASTER(
+      printf("%s: INFO: Converting %s into F2(HKL) list %s\n",
+        __FILE__, infile, OUTFILE);
+      printf ("%s\n",cmd);
+      );
+  fflush(NULL);
+  return(OUTFILE);
+} // cif2hkl
+#endif
 
 int fluo_PN_list_compare (void const *a, void const *b)
   {
@@ -139,7 +209,7 @@ int fluo_get_material(char *filename, char *formula) {
   int flag_found_cif=0;
   FILE *file = Open_File(filename, "r", NULL);
   if (!file)
-    exit(fprintf(stderr, "%s: ERROR: can not open file %s\n", 
+    exit(fprintf(stderr, "%s: ERROR: can not open file %s\n",
           __FILE__, filename));
 
   // Read the file, and search tokens in rows
@@ -159,11 +229,11 @@ int fluo_get_material(char *filename, char *formula) {
 
     // search for CIF token
     // single line: search " '\'" delimiter after CIF token, marks reading the formula
-    if (!strncasecmp(Line, "_chemical_formula_structural", 28) 
-        || !strncasecmp(Line, "_chemical_formula_sum", 21) 
+    if (!strncasecmp(Line, "_chemical_formula_structural", 28)
+        || !strncasecmp(Line, "_chemical_formula_sum", 21)
         || !strncasecmp(Line, "_chemical_formula_moiety", 24)
         || flag_found_cif) {
-      if  (flag_found_cif) { flag_found_cif=0; /* can not span on more that 2 lines */} 
+      if  (flag_found_cif) { flag_found_cif=0; /* can not span on more that 2 lines */}
       else flag_found_cif=1;
       // search for delimiter after the CIF token
       char *first_space_after_token=strpbrk(Line, " \'\n");
@@ -176,9 +246,9 @@ int fluo_get_material(char *filename, char *formula) {
           continue;
         }
       }
-      if (first_non_space) 
+      if (first_non_space)
         next_non_space  = strpbrk(first_non_space+1, "\'\n\r"); // position of formula end
-      if (next_non_space) { 
+      if (next_non_space) {
         flag_exit = 1;
         token = first_non_space;
       }

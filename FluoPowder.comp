@@ -585,7 +585,7 @@ do { /* while (intersect) Loop over multiple scattering events */
 
       // for powder scattering we need to loop over lines instead of elements
       // also keep track of how many lines are reachable for this ki
-      for (i_q=0; i_q< line_info.Nq && line_info.q[i]<2*ki; i_q++){
+      for (i_q=0; i_q< line_info.count && line_info.q[i_q]<2*ki; i_q++){
         //GET_TOTAL_POWDER_XSECT(); //this is likeley already present in line_info
         cum_xs_powder[i_q+1]      = cum_xs_powder[i_q] + line_info.my_s_k2[i_q]*ki*ki;
       }

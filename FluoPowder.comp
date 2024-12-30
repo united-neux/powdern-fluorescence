@@ -156,8 +156,8 @@ SHARE %{
   #define FLUORESCENCE 0  // Fluo
   #define RAYLEIGH     1  // Coherent
   #define COMPTON      2  // Incoherent
-  #define TRANSMISSION 3
-  #define POWDER       4 // Powder scattering
+  #define POWDER       3 // Powder scattering
+  #define TRANSMISSION 4
   #include <xraylib/xraylib.h>
   #endif
   %include "read_table-lib"
@@ -799,7 +799,7 @@ do { /* while (intersect) Loop over multiple scattering events */
         kf         = ComptonEnergy(Ei, theta, NULL)*E2K; /* XRayLib */
         p         *= 4*PI*dsigma/xs[COMPTON];
         break;
-      case POWDER:      /* 4 Powder: Coherent: elastic, choose line/q */
+      case POWDER:      /* 3 Powder: Coherent: elastic */
         n_powder++;
         p_powder += p;
         break;

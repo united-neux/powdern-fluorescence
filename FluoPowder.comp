@@ -738,8 +738,8 @@ do { /* while (intersect) Loop over multiple scattering events */
 
       double nx,ny,nz, tmp_kx,tmp_ky,tmp_kz, kout_x, kout_y, kout_z;
 
-      if (fabs(scalar_prod(1,0,0,kx,ky,z)) < fabs(scalar_prod(0,0,1,kx,ky,kz)) ) {
-        // k mostly along z - find rotation axis by cross product with x
+      if (fabs(scalar_prod(1,0,0,kx,ky,kz)) < fabs(scalar_prod(0,0,1,kx,ky,kz)) ) {
+        // k mostly along z or y - find rotation axis by cross product with x
         nx = 1; ny = 0; nz = 0;
       } else {
         // k mostly along x - find rotation axis by cross product with z

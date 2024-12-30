@@ -666,12 +666,14 @@ do { /* while (intersect) Loop over multiple scattering events */
 
   } /* if intersect (propagate) */
 
-  //TODO At this point we know that we scatter somehow
+  //N.b. At this point we know that we scatter somehow
   if (intersect) { /* scattering event */
     int    i_Z, Z, i_q;
     double solid_angle;
     double theta, dsigma;
     double Ef, dE;
+
+    i_Z=i_q=0;
 
     /* correct for XS total(photo+Compton+Rayleigh) > sum(fluo+Compton+Rayleigh) */
     dsigma = (xs[FLUORESCENCE]+xs[RAYLEIGH]+xs[COMPTON]+xs[POWDER])/sigma_barn;
@@ -684,14 +686,17 @@ do { /* while (intersect) Loop over multiple scattering events */
     switch (type) {
       case FLUORESCENCE:
         i_Z = XRMC_SelectFromDistribution(cum_xs_fluo,     compound->nElements+1);
+        Z   = compound->Elements[i_Z];
         break;
       case RAYLEIGH:
         if (!flag_rayleigh) ABSORB;
         i_Z = XRMC_SelectFromDistribution(cum_xs_Rayleigh, compound->nElements+1);
+        Z   = compound->Elements[i_Z];
         break;
       case COMPTON:
         if (!flag_compton) ABSORB;
         i_Z = XRMC_SelectFromDistribution(cum_xs_Compton,  compound->nElements+1);
+        Z   = compound->Elements[i_Z];
         break;
       case POWDER:
         if(!flag_powder) ABSORB;
@@ -701,7 +706,6 @@ do { /* while (intersect) Loop over multiple scattering events */
         printf("%s: WARNING: process %i unknown. Absorb.\n", NAME_CURRENT_COMP, type);
         ABSORB;
     }
-    Z   = compound->Elements[i_Z];
 
     if ( type != POWDER ){
       /* 4PI scattering branch */

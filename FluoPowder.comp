@@ -284,8 +284,6 @@ INITIALIZE %{
   cum_xs_fluo              = create_darr1d(compound->nElements+1);
   cum_xs_Compton           = create_darr1d(compound->nElements+1);
   cum_xs_Rayleigh          = create_darr1d(compound->nElements+1);
-  // no need for array here - the separate elements are already built into the structure factors
-  cum_xs_powder            = create_darr1d(compound->nElements+1);
   cum_massFractions[0]     = 0;
 
   /* print material information, and check for elements */
@@ -378,6 +376,10 @@ INITIALIZE %{
         line_info.w[i] = L[i].w;
       }
     }
+
+    //allocate holding structures for powder xs per line.
+    cum_xs_powder            = create_darr1d(line_info.count);
+    reuse_cum_xs_powder      = create_darr1d(line_info.count);
   }
 
   // cached variables set to 0 (for SPLIT)
@@ -386,8 +388,6 @@ INITIALIZE %{
   reuse_cum_xs_fluo              = create_darr1d(compound->nElements+1);
   reuse_cum_xs_Compton           = create_darr1d(compound->nElements+1);
   reuse_cum_xs_Rayleigh          = create_darr1d(compound->nElements+1);
-  //no need for array here
-  reuse_cum_xs_powder            = create_darr1d(compound->nElements+1);
 %}
 
 TRACE %{

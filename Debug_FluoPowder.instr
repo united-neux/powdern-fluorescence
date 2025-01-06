@@ -1,0 +1,68 @@
+/*******************************************************************************
+*         McXtrace instrument definition URL=http://www.mcxtrace.org
+*
+* Instrument: Test_PowderN
+*
+* %Identification
+* Written by: Erik B Knudsen (erkn@fysik.dtu.dk)
+* Date: 2009
+* Origin: DTU Physics
+* Version: 1.0
+* %INSTRUMENT_SITE: Tests_samples
+*
+* Unit-test instrument for the PowderN sample component.
+*
+* %Description
+* Simply a model source illuminating a powder sample.
+* The default sample itself is an LaB6-powder.
+* Alternatively, the Single_crystal component can also be tested in powder mode.
+*
+* %Example: Test_PowderN.instr E0=15 directbeam=1 SPLITS=20 Detector: Sph_mon_I=7.94366e-10
+*
+* %Parameters
+* E0:          [keV]  Source energy (width 1 keV)
+* L1:          [m]    Source-sample distance
+* directbeam:  [1]    Suppress direct beam (0) or not (1)
+* reflections: [str]  List of powder reflections, LAU/CIF format.
+*
+* %End
+*******************************************************************************/
+DEFINE INSTRUMENT Test_PowderN(E0=15, L1=10, int directbeam=0, string reflections="LaB6_test.hkl", TTH=0)
+
+TRACE
+
+REMOVABLE COMPONENT Origin = Progress_bar()
+  AT (0,0,0) ABSOLUTE
+
+COMPONENT src = Source_flat(
+    yheight = 1e-3, xwidth = 1e-3, dist = 10, focus_xw = 1e-3,
+    focus_yh = 1e-3, E0 = E0, dE = 1e-6)
+AT (0, 0, 0) RELATIVE Origin
+
+COMPONENT sample_cradle = Arm()
+AT (0, 0, L1) RELATIVE PREVIOUS
+
+COMPONENT FL_pow = FluoPowder(
+    radius=0.5e-4, yheight=1e-3, reflections=reflections,
+    flag_compton=0, flag_rayleigh=0)
+AT (0, 0, 0) RELATIVE sample_cradle
+
+COMPONENT Sph_mon = PSD_monitor_4PI(nx=200,ny=200, radius=1, restore_xray=1, filename="Sphere")
+AT (0, 0, 0) RELATIVE PREVIOUS
+
+/*COMPONENT ttharm= Arm()*/
+/*AT(0,0,0) RELATIVE sample_cradle*/
+/*ROTATED (0,TTH,0) RELATIVE sample_cradle*/
+/**/
+/*COMPONENT detector2 = PSD_monitor(*/
+/*    nx=200, ny=200, xwidth=20, yheight=20, filename="psd2",restore_xray=1*/
+/*)*/
+/*AT(0,0,0.1) RELATIVE PREVIOUS*/
+
+// ideal "banana" detector
+/*COMPONENT det_angle = Monitor_nD(options="abs theta limits=[5 90]",*/
+/*  radius=0.6, yheight=1e-2, bins=10000)*/
+/*AT (0,0,0) RELATIVE sample_cradle*/
+
+
+END

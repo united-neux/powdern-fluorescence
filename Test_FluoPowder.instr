@@ -14,7 +14,7 @@
 *
 * %Description
 * Simply a model source illuminating a powder sample.
-* The default sample itself is an LaB6-powder. 
+* The default sample itself is an LaB6-powder.
 * Alternatively, the Single_crystal component can also be tested in powder mode.
 *
 * %Example: Test_PowderN.instr reflections="Fe_bcc229_lt13deg.dat" -n1e7 TTH=13.4 d_phi=45 frac_i=0 Detector: Sph_mon_I=2.68295e-14
@@ -40,8 +40,8 @@
 *
 * %End
 *******************************************************************************/
-DEFINE INSTRUMENT Test_PowderN(E0=15, L1=10, int directbeam=0, string reflections="LaB6_660b_AVID2.hkl", 
-  int SPLITS=1, frac_c=0.8, frac_i=0.1, frac_t=0.1, d_phi=0, TTH=0, int index=3)
+DEFINE INSTRUMENT Test_PowderN(E0=15, dE=1, L1=10, int directbeam=0, string reflections="LaB6_660b_AVID2.hkl",
+    int SPLITS=1, frac_c=0.8, frac_i=0.1, frac_t=0.1, d_phi=0, TTH=0, int index=3, int collimated=0)
 
 TRACE
 
@@ -49,9 +49,16 @@ REMOVABLE COMPONENT Origin = Progress_bar()
   AT (0,0,0) ABSOLUTE
 
 COMPONENT src = Source_flat(
-    yheight = 1e-3, xwidth = 1e-3, dist = 10, focus_xw = 1e-3,
-    focus_yh = 1e-3, E0 = E0, dE = 1)
+    yheight = 1e-6, xwidth = 1e-6, dist = 10, focus_xw = 1e-6,
+    focus_yh = 1e-6, E0 = E0, dE = dE)
   AT (0, 0, 0) RELATIVE Origin
+EXTEND%{
+  if (INSTRUMENT_GETPAR(collimated)){
+    double kk=sqrt(kx*kx+ky*ky+kz*kz);
+    kx=ky=0;
+    kz=kk;
+  }
+%}
 
 SPLIT SPLITS COMPONENT sample_cradle = Arm()
   AT (0, 0, L1) RELATIVE PREVIOUS
@@ -59,7 +66,7 @@ SPLIT SPLITS COMPONENT sample_cradle = Arm()
 COMPONENT Pow = PowderN(
     radius=0.5e-4, yheight=1e-3, reflections=reflections,format={ 4,5,7,0,0,0,0,0 },
     p_inc=frac_i, p_transmit=frac_t, p_interact=frac_c,
-    d_phi=d_phi, pack = 0.5, Vc = 123)
+    d_phi=d_phi, pack = 1.0, Vc = 123)
 WHEN (index == 1)
 AT (0, 0, 0) RELATIVE sample_cradle
 EXTEND %{

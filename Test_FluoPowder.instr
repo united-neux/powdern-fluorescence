@@ -64,7 +64,7 @@ SPLIT SPLITS COMPONENT sample_cradle = Arm()
   AT (0, 0, L1) RELATIVE PREVIOUS
 
 COMPONENT Pow = PowderN(
-    radius=0.5e-4, yheight=1e-3, reflections=reflections,format={ 4,5,7,0,0,0,0,0 },
+    radius=0.5e-6, reflections=reflections,format={ 4,5,7,0,0,0,0,0 },
     p_inc=frac_i, p_transmit=frac_t, p_interact=frac_c,
     d_phi=d_phi, pack = 1.0, Vc = 123)
 WHEN (index == 1)
@@ -78,7 +78,7 @@ EXTEND %{
 %}
 
 COMPONENT SX = Single_crystal(
-    radius=0.5e-4, yheight=1e-3, reflections=reflections,powder=1,
+    radius=0.5e-6, reflections=reflections,powder=1,
     p_transmit=frac_t, mosaic=5, sigma_inc=-1)
 WHEN (index == 2)
 AT (0, 0, 0) RELATIVE sample_cradle
@@ -91,7 +91,7 @@ EXTEND %{
 %}
 
 COMPONENT FL_pow = FluoPowder(
-    radius=0.5e-4, yheight=1e-3, reflections=reflections
+    radius=0.5e-6, reflections=reflections
 )WHEN (index == 3)
 AT (0, 0, 0) RELATIVE sample_cradle
 EXTEND %{

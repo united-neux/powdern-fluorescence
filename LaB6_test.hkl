@@ -1,0 +1,40 @@
+# TITLE  La1 B6 [Cubic, Centric (-1 at origin)]
+#        a         b         c       alpha     beta      gamma
+# CELL    4.15690   4.15690   4.15690  90.00000  90.00000  90.00000
+# SPCGRP  P m -3 m [Number  221]
+#                    X         Y         Z         B         Occ       Spin      Charge
+# Atom  La1                    0.00000   0.00000   0.00000   0.42321   0.02083   0.00000   0.00000
+# Atom  B1                     0.19750   0.50000   0.50000   0.31662   0.12500   0.00000   0.00000
+# COMMAND cif2hkl LaB6_660b_AVID2.cif --output LaB6_660b_AVID2.cif.hkl
+# CIF2HKL (c) ILL 2012 E. Farhi <farhi@ill.eu> based on CrysFML
+# DATE    02/08/2018 at 13:44:42
+#
+# Physical parameters:
+# sigma_coh         8.53226 coherent   scattering cross section in [barn]
+# sigma_inc        11.33002 incoherent scattering cross section in [barn]
+# sigma_abs      4610.97021 absorption scattering cross section in [barn]
+# density           2.83684 in [g/cm^3]
+# weight          203.77150 in [g/mol]
+# Vc               71.83047 volume of unit cell in [A^3]
+# lattice_a         4.15690 lattice parameter a in [Angs]
+# lattice_b         4.15690 lattice parameter b in [Angs]
+# lattice_c         4.15690 lattice parameter c in [Angs]
+# lattice_aa       90.00000 lattice angle alpha in [deg]
+# lattice_bb       90.00000 lattice angle beta in [deg]
+# lattice_cc       90.00000 lattice angle gamma in [deg]
+# STRUCTURE FACTORS(X-RAYS)
+#
+# Format parameters: Crystallographica format
+# column_h  1
+# column_k  2
+# column_l  3
+# column_j  4   multiplicity 'j'
+# column_d  5   d-spacing 'd' in [Angs]
+# column_F2 6   norm of scattering factor |F|^2 in [barn]
+#
+# List  1453 reflections for lambda >     0.3500 [Angs], decreasing d-spacing.
+# H   K   L     Mult    dspc                   |Fc|^2
+   1    0    0     6       4.15690    1422.31482
+   1    1    0    12       2.93937    2374.63916
+   1    1    1     8       2.39999    2390.05981
+   2    0    0     6       2.07845    2225.12817
